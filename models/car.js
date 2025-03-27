@@ -26,7 +26,7 @@ const carSchema = new mongoose.Schema({
     enum: Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => 2000 + i),
     required: true
   },
-  pricePerDay: { type: Number },
+  pricePerDay: { type: Number ,min:0 ,required: true },
   location: { type: String },
   availability: { type: String, enum: ['available', 'rented', 'unavailable'], default: 'available' },
   image: {
