@@ -35,11 +35,7 @@ const carSchema = new mongoose.Schema({
   },
   isCompatible: { type: Boolean, default: false },
 
-// listingType: {
-//     type: String,
-//     enum: ['sale', 'rent'],
-//     required: true
-//   },  
+
   forSale: { type: Boolean, default: false },            
   salePrice: { type: Number, min: 0 },                      
   isSold: { type: Boolean, default: false },                
