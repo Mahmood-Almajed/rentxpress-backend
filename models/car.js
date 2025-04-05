@@ -26,13 +26,26 @@ const carSchema = new mongoose.Schema({
     enum: Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => 2000 + i),
     required: true
   },
-  pricePerDay: { type: Number ,min:0 ,required: true },
+  pricePerDay: { type: Number ,min:0},
   location: { type: String },
   availability: { type: String, enum: ['available', 'rented', 'unavailable'], default: 'available' },
   image: {
     url: { type: String, required: true }, 
     cloudinary_id: { type: String, required: true }, 
   },
+  isCompatible: { type: Boolean, default: false },
+
+// listingType: {
+//     type: String,
+//     enum: ['sale', 'rent'],
+//     required: true
+//   },  
+  forSale: { type: Boolean, default: false },            
+  salePrice: { type: Number, min: 0 },                      
+  isSold: { type: Boolean, default: false },                
+  buyerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+
   rentals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Rental' }],
   reviews: [reviewSchema],
 }, { timestamps: true });
