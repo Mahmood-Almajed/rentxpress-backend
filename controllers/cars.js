@@ -5,6 +5,7 @@ const isAdmin = require('../middleware/is-admin.js');
 const Car = require('../models/car.js');
 const upload = require('../config/multer.js');
 
+
 const router = express.Router();
 
 // ========== Public Routes ===========
@@ -27,6 +28,8 @@ router.get('/:carId', async (req, res) => {
   }
 });
 
+
+
 // ========== Protected Routes =========
 router.use(verifyToken);
 
@@ -47,7 +50,8 @@ router.post('/', isDealer, upload.single('image'), async (req, res) => {
       listingType,
       isCompatible,
       isSold,
-      buyerId
+      buyerId,
+      dealerPhone
     } = req.body;
 
     const car = await Car.create({
@@ -62,6 +66,7 @@ router.post('/', isDealer, upload.single('image'), async (req, res) => {
       isSold: isSold === 'true',
       buyerId: isSold === 'true' ? buyerId || null : null,
       isCompatible: isCompatible === 'true',
+      dealerPhone,
       image: {
         url: req.file.path,
         cloudinary_id: req.file.filename,
@@ -100,7 +105,8 @@ router.put('/:carId', isDealer, upload.single('image'), async (req, res) => {
       listingType,
       isCompatible,
       isSold,
-      buyerId
+      buyerId,
+      dealerPhone
     } = req.body;
 
     const updatedData = {
@@ -114,6 +120,7 @@ router.put('/:carId', isDealer, upload.single('image'), async (req, res) => {
       isSold: isSold === 'true',
       buyerId: isSold === 'true' ? buyerId || null : null,
       isCompatible: isCompatible === 'true',
+      dealerPhone,
     };
 
     if (req.file) {
