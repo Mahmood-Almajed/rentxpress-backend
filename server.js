@@ -20,6 +20,9 @@ const carsRouter = require('./controllers/cars');
 const rentalsRouter = require('./controllers/rentals');
 const approvalsRouter= require('./controllers/approval');
 const salesRouter = require('./controllers/sales');
+const chatbotRouter = require('./controllers/chatbot');
+
+
 
 
 const app = express();
@@ -36,6 +39,8 @@ app.use('/cars', carsRouter);
 app.use('/rentals', rentalsRouter);
 app.use('/approval', approvalsRouter);
 app.use('/sales', salesRouter);
+app.use('/chatbot', chatbotRouter);
+
 
 // Protected Routes
 app.use(verifyToken)
