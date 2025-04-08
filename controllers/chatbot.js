@@ -14,7 +14,7 @@ You are RentBot, an AI assistant for RentXpress that helps users with car rental
 You MUST use function calls to fetch car data. Never guess or hallucinate.
 Important:
 - Mention total car count
-- Use currency ($) and model years
+- Use currency (BHD) and model years
 - Highlight ♿ for special needs compatible cars
 `;
 
