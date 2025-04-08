@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Configuration, OpenAIApi } = require('openai');
 const Car = require('../models/car');
+const User = require('../models/user'); // still needed for getCarsByDealer
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -46,6 +47,17 @@ const functions = [
       },
       required: ["listingType", "sortOrder"]
     }
+  },
+  {
+    name: "getCarsByDealer",
+    description: "Get all cars listed by a specific dealer",
+    parameters: {
+      type: "object",
+      properties: {
+        dealerUsername: { type: "string" }
+      },
+      required: ["dealerUsername"]
+    }
   }
 ];
 
@@ -87,7 +99,7 @@ const handleFunctionCall = async (name, args) => {
       filter.isCompatible = true;
     }
 
-    const allCars = await Car.find(filter);
+    const allCars = await Car.find(filter).populate('dealerId', 'username');
     const limit = args.limit ?? 5;
     const results = limit > 0 ? allCars.slice(0, limit) : allCars;
 
@@ -99,7 +111,8 @@ const handleFunctionCall = async (name, args) => {
         model: car.model,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
-        dealerId: car.dealerId,
+        dealerUsername: car.dealerId?.username || 'Unknown',
+        dealerPhone: car.dealerPhone || 'N/A',
         isCompatible: car.isCompatible
       }))
     };
@@ -127,6 +140,29 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible
       }
+    };
+  }
+
+  if (name === "getCarsByDealer") {
+    const dealer = await User.findOne({ username: args.dealerUsername });
+
+    if (!dealer) {
+      return { total: 0, cars: [] };
+    }
+
+    const cars = await Car.find({ dealerId: dealer._id, availability: 'available' });
+
+    return {
+      total: cars.length,
+      cars: cars.map(car => ({
+        year: car.year,
+        brand: car.brand,
+        model: car.model,
+        price: car.forSale ? car.salePrice : car.pricePerDay,
+        type: car.forSale ? 'sale' : 'rent',
+        isCompatible: car.isCompatible,
+        dealerPhone: car.dealerPhone || 'N/A'
+      }))
     };
   }
 
