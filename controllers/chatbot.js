@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Configuration, OpenAIApi } = require('openai');
 const Car = require('../models/car');
-const User = require('../models/user'); // still needed for getCarsByDealer
+const User = require('../models/user');
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -16,6 +16,7 @@ Important:
 - Mention total car count
 - Use currency (BHD) and model years
 - Highlight ♿ for special needs compatible cars
+- Always return clickable links using markdown [Click here](url)
 `;
 
 const functions = [
@@ -58,10 +59,20 @@ const functions = [
       },
       required: ["dealerUsername"]
     }
+  },
+  {
+    name: "listAllDealers",
+    description: "List all dealers on the platform along with the cars they have listed and their contact numbers",
+    parameters: {
+      type: "object",
+      properties: {}
+    }
   }
 ];
 
 const handleFunctionCall = async (name, args) => {
+  const baseUrl = 'http://localhost:5173/cars/';
+
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -106,6 +117,7 @@ const handleFunctionCall = async (name, args) => {
     return {
       total: allCars.length,
       cars: results.map(car => ({
+        id: car._id,
         year: car.year,
         brand: car.brand,
         model: car.model,
@@ -113,7 +125,8 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         dealerUsername: car.dealerId?.username || 'Unknown',
         dealerPhone: car.dealerPhone || 'N/A',
-        isCompatible: car.isCompatible
+        isCompatible: car.isCompatible,
+        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
       }))
     };
   }
@@ -133,12 +146,15 @@ const handleFunctionCall = async (name, args) => {
 
     return {
       result: {
+        id: car._id,
         year: car.year,
         brand: car.brand,
         model: car.model,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
-        isCompatible: car.isCompatible
+        isCompatible: car.isCompatible,
+        dealerPhone: car.dealerPhone || 'N/A',
+        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
       }
     };
   }
@@ -155,14 +171,48 @@ const handleFunctionCall = async (name, args) => {
     return {
       total: cars.length,
       cars: cars.map(car => ({
+        id: car._id,
         year: car.year,
         brand: car.brand,
         model: car.model,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
-        dealerPhone: car.dealerPhone || 'N/A'
+        dealerPhone: car.dealerPhone || 'N/A',
+        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
       }))
+    };
+  }
+
+  if (name === "listAllDealers") {
+    const cars = await Car.find({}).populate('dealerId', 'username');
+    const dealerMap = {};
+
+    cars.forEach(car => {
+      const username = car.dealerId?.username;
+      if (!username) return;
+
+      if (!dealerMap[username]) {
+        dealerMap[username] = {
+          cars: [],
+          phoneNumbers: new Set()
+        };
+      }
+
+      const label = `${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''}`;
+      dealerMap[username].cars.push(label);
+      if (car.dealerPhone) dealerMap[username].phoneNumbers.add(car.dealerPhone);
+    });
+
+    const formatted = Object.entries(dealerMap).map(([dealer, data], index) => {
+      const carList = data.cars.join(', ');
+      const phones = [...data.phoneNumbers].join(', ');
+      return `**${index + 1}. Dealer: ${dealer}**\nCars: ${carList}\nContact: 📞 ${phones}`;
+    });
+
+    return {
+      formattedDealersList: formatted.join('\n\n'),
+      totalDealers: Object.keys(dealerMap).length
     };
   }
 
