@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:carId', async (req, res) => {
   try {
-    const car = await Car.findById(req.params.carId).populate('reviews.userId', 'username');
+    const car = await Car.findById(req.params.carId).populate('reviews.userId', 'username').populate('dealerId', 'username');
     res.status(200).json(car);
   } catch (error) {
     res.status(500).json(error);
