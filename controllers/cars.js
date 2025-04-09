@@ -5,8 +5,8 @@ const isAdmin = require('../middleware/is-admin.js');
 const Car = require('../models/car.js');
 const upload = require('../config/multer.js');
 
-
 const router = express.Router();
+const cloudinary = require('../config/cloudinary');
 
 // ========== Public Routes ===========
 
@@ -21,23 +21,23 @@ router.get('/', async (req, res) => {
 
 router.get('/:carId', async (req, res) => {
   try {
-    const car = await Car.findById(req.params.carId).populate('reviews.userId', 'username').populate('dealerId', 'username');
+    const car = await Car.findById(req.params.carId)
+      .populate('reviews.userId', 'username')
+      .populate('dealerId', 'username');
     res.status(200).json(car);
   } catch (error) {
     res.status(500).json(error);
   }
 });
 
-
-
 // ========== Protected Routes =========
 router.use(verifyToken);
 
 // Create Car
-router.post('/', isDealer, upload.single('image'), async (req, res) => {
+router.post('/', isDealer, upload.array('images', 5), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Image is required." });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "At least one image is required." });
     }
 
     const {
@@ -53,6 +53,11 @@ router.post('/', isDealer, upload.single('image'), async (req, res) => {
       buyerId,
       dealerPhone
     } = req.body;
+
+    const images = req.files.map(file => ({
+      url: file.path,
+      cloudinary_id: file.filename,
+    }));
 
     const car = await Car.create({
       dealerId: req.user._id,
@@ -67,10 +72,7 @@ router.post('/', isDealer, upload.single('image'), async (req, res) => {
       buyerId: isSold === 'true' ? buyerId || null : null,
       isCompatible: isCompatible === 'true',
       dealerPhone,
-      image: {
-        url: req.file.path,
-        cloudinary_id: req.file.filename,
-      },
+      images,
     });
 
     res.status(201).json(car);
@@ -81,18 +83,13 @@ router.post('/', isDealer, upload.single('image'), async (req, res) => {
 });
 
 // Update Car
-router.put('/:carId', isDealer, upload.single('image'), async (req, res) => {
+router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
   try {
     const car = await Car.findById(req.params.carId);
     if (!car) return res.status(404).json({ message: 'Car not found' });
 
     if (req.user.role !== 'admin' && car.dealerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Unauthorized' });
-    }
-
-    if (req.file && car.image?.cloudinary_id) {
-      const cloudinary = require('../config/cloudinary');
-      await cloudinary.uploader.destroy(car.image.cloudinary_id);
     }
 
     const {
@@ -109,7 +106,23 @@ router.put('/:carId', isDealer, upload.single('image'), async (req, res) => {
       dealerPhone
     } = req.body;
 
-    const updatedData = {
+    // 🔥 Remove old images if new ones uploaded
+    if (req.files && req.files.length > 0) {
+      if (car.images && car.images.length > 0) {
+        for (const img of car.images) {
+          if (img.cloudinary_id) {
+            await cloudinary.uploader.destroy(img.cloudinary_id);
+          }
+        }
+      }
+
+      car.images = req.files.map(file => ({
+        url: file.path,
+        cloudinary_id: file.filename,
+      }));
+    }
+
+    Object.assign(car, {
       brand,
       model,
       year: parseInt(year),
@@ -121,17 +134,10 @@ router.put('/:carId', isDealer, upload.single('image'), async (req, res) => {
       buyerId: isSold === 'true' ? buyerId || null : null,
       isCompatible: isCompatible === 'true',
       dealerPhone,
-    };
+    });
 
-    if (req.file) {
-      updatedData.image = {
-        url: req.file.path,
-        cloudinary_id: req.file.filename,
-      };
-    }
-
-    const updatedCar = await Car.findByIdAndUpdate(req.params.carId, updatedData, { new: true });
-    res.status(200).json(updatedCar);
+    await car.save();
+    res.status(200).json(car);
   } catch (error) {
     console.error('Car update failed:', error);
     res.status(500).json({ message: 'Failed to update car', error: error.message });
@@ -145,6 +151,11 @@ router.delete('/:carId', verifyToken, async (req, res) => {
 
     if (req.user.role !== 'admin' && car.dealerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: "Unauthorized: You can only delete your own cars unless you're an admin." });
+    }
+
+    // Delete associated images from Cloudinary
+    for (let img of car.images) {
+      await cloudinary.uploader.destroy(img.cloudinary_id);
     }
 
     await Car.findByIdAndDelete(req.params.carId);

@@ -58,10 +58,13 @@ const carSchema = new mongoose.Schema({
   pricePerDay: { type: Number, min: 0 },
   location: { type: String },
   availability: { type: String, enum: ['available', 'rented', 'unavailable'], default: 'available' },
-  image: {
-    url: { type: String, required: true },
-    cloudinary_id: { type: String, required: true },
-  },
+ // models/car.js
+images: [
+  {
+    url: String,
+    cloudinary_id: String,
+  }
+],
   isCompatible: { type: Boolean, default: false },
   forSale: { type: Boolean, default: false },
   salePrice: { type: Number, min: 0 },
