@@ -185,37 +185,38 @@ const handleFunctionCall = async (name, args) => {
   }
 
   if (name === "listAllDealers") {
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://www.rentxpress.com/cars/'
+      : 'http://localhost:5173/cars/';
+  
     const cars = await Car.find({}).populate('dealerId', 'username');
     const dealerMap = {};
-
+  
     cars.forEach(car => {
       const username = car.dealerId?.username;
       if (!username) return;
-
+  
       if (!dealerMap[username]) {
         dealerMap[username] = {
-          cars: [],
-          phoneNumbers: new Set()
+          cars: []
         };
       }
-
-      const label = `${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''}`;
+  
+      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year})](${baseUrl}${car._id}) — 📞 ${car.dealerPhone || 'N/A'}`;
       dealerMap[username].cars.push(label);
-      if (car.dealerPhone) dealerMap[username].phoneNumbers.add(car.dealerPhone);
     });
-
+  
     const formatted = Object.entries(dealerMap).map(([dealer, data], index) => {
-      const carList = data.cars.join(', ');
-      const phones = [...data.phoneNumbers].join(', ');
-      return `**${index + 1}. Dealer: ${dealer}**\nCars: ${carList}\nContact: 📞 ${phones}`;
+      const carList = data.cars.map(car => `- ${car}`).join('\n');
+      return `**${index + 1}. Dealer: ${dealer}**\n${carList}\n**Total cars: ${data.cars.length}**`;
     });
-
+  
     return {
       formattedDealersList: formatted.join('\n\n'),
       totalDealers: Object.keys(dealerMap).length
     };
   }
-
+  
   return null;
 };
 
