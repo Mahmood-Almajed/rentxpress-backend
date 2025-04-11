@@ -50,6 +50,12 @@ const carSchema = new mongoose.Schema({
       message: props => `${props.value} is not a valid model for ${props.instance.brand}`
     }
   },
+
+  type: {
+    type: String,
+    enum: ['SUV', 'Sedan', 'Truck', 'Off-Road', 'Convertible', 'Hatchback', 'Luxury', 'Electric', 'Sports', 'Van', 'Muscle', 'Coupe', 'Hybrid'],
+  },
+
   year: {
     type: Number,
     enum: Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => 2000 + i),
