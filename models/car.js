@@ -71,7 +71,7 @@ images: [
   isSold: { type: Boolean, default: false },
   dealerPhone: { type: String },
   buyerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-
+  mileage: { type: Number, min: 0 },
   rentals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Rental' }],
   reviews: [reviewSchema],
 }, { timestamps: true });

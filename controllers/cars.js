@@ -4,9 +4,9 @@ const isDealer = require('../middleware/is-dealer.js');
 const isAdmin = require('../middleware/is-admin.js');
 const Car = require('../models/car.js');
 const upload = require('../config/multer.js');
+const cloudinary = require('../config/cloudinary');
 
 const router = express.Router();
-const cloudinary = require('../config/cloudinary');
 
 // ========== Public Routes ===========
 
@@ -45,6 +45,7 @@ router.post('/', isDealer, upload.array('images', 5), async (req, res) => {
       model,
       year,
       location,
+      mileage,
       pricePerDay,
       salePrice,
       listingType,
@@ -65,6 +66,7 @@ router.post('/', isDealer, upload.array('images', 5), async (req, res) => {
       model,
       year: parseInt(year),
       location,
+      mileage: parseFloat(mileage),
       pricePerDay: listingType === 'rent' ? parseFloat(pricePerDay) : undefined,
       salePrice: listingType === 'sale' ? parseFloat(salePrice) : undefined,
       forSale: listingType === 'sale',
@@ -97,6 +99,7 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       model,
       year,
       location,
+      mileage,
       pricePerDay,
       salePrice,
       listingType,
@@ -104,12 +107,11 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       isSold,
       buyerId,
       dealerPhone,
+      removeIds
     } = req.body;
 
     // ✅ Handle removal of specific existing images
-    const removedIds = req.body.removeIds || [];
-    const removedArray = Array.isArray(removedIds) ? removedIds : [removedIds];
-
+    const removedArray = Array.isArray(removeIds) ? removeIds : (removeIds ? [removeIds] : []);
     for (let id of removedArray) {
       await cloudinary.uploader.destroy(id);
       car.images = car.images.filter(img => img.cloudinary_id !== id);
@@ -130,6 +132,7 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       model,
       year: parseInt(year),
       location,
+      mileage: parseFloat(mileage),
       pricePerDay: listingType === 'rent' ? parseFloat(pricePerDay) : undefined,
       salePrice: listingType === 'sale' ? parseFloat(salePrice) : undefined,
       forSale: listingType === 'sale',
