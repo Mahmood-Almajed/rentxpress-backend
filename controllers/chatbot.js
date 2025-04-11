@@ -17,12 +17,13 @@ Important:
 - Use currency (BHD) or (BD) and model years
 - Highlight ♿ for special needs compatible cars
 - Always return clickable links using markdown [Click here](url)
+- for the Mileage use "km" as the unit and separate thousands with a comma
 `;
 
 const functions = [
   {
     name: "getAvailableCars",
-    description: "Fetch cars filtered by brand, type, price, and accessibility",
+    description: "Fetch cars filtered by brand, type, price, mileage, and accessibility",
     parameters: {
       type: "object",
       properties: {
@@ -32,6 +33,14 @@ const functions = [
         isCompatible: {
           type: "boolean",
           description: "Only return cars compatible with special needs"
+        },
+        type: {
+          type: "string",
+          enum: ['SUV', 'Sedan', 'Truck', 'Off-Road', 'Convertible', 'Hatchback', 'Luxury', 'Electric', 'Sports', 'Van', 'Muscle', 'Coupe', 'Hybrid']
+        },
+        maxMileage: {
+          type: "number",
+          description: "Filter cars with mileage less than or equal to this"
         },
         limit: { type: "number", default: 5 }
       }
@@ -90,6 +99,10 @@ const handleFunctionCall = async (name, args) => {
       }
     }
 
+    if (args.maxMileage) {
+      filter.mileage = { $lte: args.maxMileage };
+    }
+
     if (listingType === 'rent') {
       filter.forSale = false;
     } else if (listingType === 'sale') {
@@ -104,6 +117,10 @@ const handleFunctionCall = async (name, args) => {
 
     if (args.brand) {
       filter.brand = new RegExp(`^${args.brand}$`, 'i');
+    }
+
+    if (args.type) {
+      filter.type = args.type;
     }
 
     if (args.isCompatible === true) {
@@ -121,6 +138,7 @@ const handleFunctionCall = async (name, args) => {
         year: car.year,
         brand: car.brand,
         model: car.model,
+        mileage: car.mileage,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
         dealerUsername: car.dealerId?.username || 'Unknown',
@@ -150,6 +168,7 @@ const handleFunctionCall = async (name, args) => {
         year: car.year,
         brand: car.brand,
         model: car.model,
+        mileage: car.mileage,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
@@ -175,6 +194,7 @@ const handleFunctionCall = async (name, args) => {
         year: car.year,
         brand: car.brand,
         model: car.model,
+        mileage: car.mileage,
         price: car.forSale ? car.salePrice : car.pricePerDay,
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
@@ -188,35 +208,35 @@ const handleFunctionCall = async (name, args) => {
     const baseUrl = process.env.NODE_ENV === 'production'
       ? 'https://www.rentxpress.com/cars/'
       : 'http://localhost:5173/cars/';
-  
+
     const cars = await Car.find({}).populate('dealerId', 'username');
     const dealerMap = {};
-  
+
     cars.forEach(car => {
       const username = car.dealerId?.username;
       if (!username) return;
-  
+
       if (!dealerMap[username]) {
         dealerMap[username] = {
           cars: []
         };
       }
-  
-      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year})](${baseUrl}${car._id}) — 📞 ${car.dealerPhone || 'N/A'}`;
+
+      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year}) - ${car.mileage} km](${baseUrl}${car._id}) — 📞 ${car.dealerPhone || 'N/A'}`;
       dealerMap[username].cars.push(label);
     });
-  
+
     const formatted = Object.entries(dealerMap).map(([dealer, data], index) => {
       const carList = data.cars.map(car => `- ${car}`).join('\n');
       return `**${index + 1}. Dealer: ${dealer}**\n${carList}\n**Total cars: ${data.cars.length}**`;
     });
-  
+
     return {
       formattedDealersList: formatted.join('\n\n'),
       totalDealers: Object.keys(dealerMap).length
     };
   }
-  
+
   return null;
 };
 
