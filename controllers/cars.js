@@ -52,7 +52,8 @@ router.post('/', isDealer, upload.array('images', 5), async (req, res) => {
       isCompatible,
       isSold,
       buyerId,
-      dealerPhone
+      dealerPhone,
+      type,
     } = req.body;
 
     const images = req.files.map(file => ({
@@ -64,6 +65,7 @@ router.post('/', isDealer, upload.array('images', 5), async (req, res) => {
       dealerId: req.user._id,
       brand,
       model,
+      type,
       year: parseInt(year),
       location,
       mileage: parseFloat(mileage),
@@ -107,6 +109,7 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       isSold,
       buyerId,
       dealerPhone,
+      type,
       removeIds
     } = req.body;
 
@@ -130,9 +133,10 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
     Object.assign(car, {
       brand,
       model,
+      type,
       year: parseInt(year),
       location,
-      mileage: parseFloat(mileage),
+      mileage: mileage !== "" ? parseFloat(mileage) : undefined,
       pricePerDay: listingType === 'rent' ? parseFloat(pricePerDay) : undefined,
       salePrice: listingType === 'sale' ? parseFloat(salePrice) : undefined,
       forSale: listingType === 'sale',
