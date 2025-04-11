@@ -80,7 +80,7 @@ const functions = [
 ];
 
 const handleFunctionCall = async (name, args) => {
-  const baseUrl = 'http://localhost:5173/cars/';
+  const baseUrl = '/cars/';
 
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
@@ -207,7 +207,7 @@ const handleFunctionCall = async (name, args) => {
   if (name === "listAllDealers") {
     const baseUrl = process.env.NODE_ENV === 'production'
       ? 'https://www.rentxpress.com/cars/'
-      : 'http://localhost:5173/cars/';
+      : '/cars/';
 
     const cars = await Car.find({}).populate('dealerId', 'username');
     const dealerMap = {};
