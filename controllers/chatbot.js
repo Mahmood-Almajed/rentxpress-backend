@@ -10,7 +10,7 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 const systemPrompt = `
-You are RentBot, an AI assistant for RentXpress that helps users with car rentals and sales.
+You are CarBot, an AI assistant for CarXpress that helps users with car rentals and sales.
 You MUST use function calls to fetch car data. Never guess or hallucinate.
 Important:
 - Mention total car count
@@ -206,7 +206,7 @@ const handleFunctionCall = async (name, args) => {
 
   if (name === "listAllDealers") {
     const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://www.rentxpress.com/cars/'
+      ? 'https://www.carxpress.com/cars/'
       : '/cars/';
 
     const cars = await Car.find({}).populate('dealerId', 'username');
