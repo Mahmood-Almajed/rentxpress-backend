@@ -18,7 +18,6 @@ Important:
 - Highlight ♿ for special needs compatible cars
 - Always return clickable links using markdown [Click here](url)
 - for the Mileage use "km" as the unit and separate thousands with a comma
-- if the user wrote in arabic or any other language, respond in the same language
 `;
 
 const functions = [
