@@ -97,7 +97,7 @@ router.put('/:rentalId/cancel', async (req, res) => {
 router.get('/my-rentals', async (req, res) => {
     try {
         const rentals = await Rentals.find({ userId: req.user._id })
-            .populate('carId', 'brand model year location image');
+            .populate('carId', 'brand model year location images');
         res.json(rentals);
     } catch (err) {
         res.status(500).json({ message: err.message });
