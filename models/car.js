@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// 💡 Inline brand-model mapping
+//  Inline brand-model mapping
 const brandModelMap = {
   Toyota: ["Corolla", "Camry", "RAV4", "Highlander", "Yaris", "Prius", "Land Cruiser", "Fortuner", "Hilux", "Avalon", "Sequoia", "Tacoma", "4Runner", "Prado"],
   Honda: ["Civic", "Accord", "CR-V", "Pilot", "Fit", "Odyssey", "HR-V", "Jazz", "Insight", "Element", "Ridgeline"],
@@ -25,7 +25,7 @@ const brandModelMap = {
   Mitsubishi: ["Lancer", "Outlander", "Pajero", "Mirage", "ASX", "Eclipse Cross"]
 };
 
-// 👇 Embedded review schema
+//  Embedded review schema
 const reviewSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   carId: { type: mongoose.Schema.Types.ObjectId, ref: 'Car' },
@@ -33,7 +33,7 @@ const reviewSchema = new mongoose.Schema({
   comment: { type: String },
 }, { timestamps: true });
 
-// 👇 Main car schema
+//  Main car schema
 const carSchema = new mongoose.Schema({
   dealerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   brand: {
@@ -64,7 +64,6 @@ const carSchema = new mongoose.Schema({
   pricePerDay: { type: Number, min: 0 },
   location: { type: String },
   availability: { type: String, enum: ['available', 'rented', 'unavailable'], default: 'available' },
- // models/car.js
 images: [
   {
     url: String,

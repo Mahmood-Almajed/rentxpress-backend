@@ -113,14 +113,14 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       removeIds
     } = req.body;
 
-    // ✅ Handle removal of specific existing images
+    //  Handle removal of specific existing images
     const removedArray = Array.isArray(removeIds) ? removeIds : (removeIds ? [removeIds] : []);
     for (let id of removedArray) {
       await cloudinary.uploader.destroy(id);
       car.images = car.images.filter(img => img.cloudinary_id !== id);
     }
 
-    // ✅ Handle new uploaded images
+    //  Handle new uploaded images
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => ({
         url: file.path,
@@ -129,7 +129,7 @@ router.put('/:carId', isDealer, upload.array('images', 5), async (req, res) => {
       car.images = [...car.images, ...newImages];
     }
 
-    // ✅ Update other car fields
+    //  Update other car fields
     Object.assign(car, {
       brand,
       model,

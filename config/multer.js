@@ -11,7 +11,6 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// Export multer instance configured for multiple files
 const upload = multer({ storage });
 
 module.exports = upload;
