@@ -80,8 +80,8 @@ const functions = [
 ];
 
 const handleFunctionCall = async (name, args) => {
-  const baseUrl = '/cars/';
-
+  const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || 'http://localhost:5173'; 
+  const baseUrl = `${FRONTEND_BASE_URL}/cars/`;
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -205,10 +205,10 @@ const handleFunctionCall = async (name, args) => {
   }
 
   if (name === "listAllDealers") {
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://www.carxpress.com/cars/'
-      : '/cars/';
-
+    const baseUrl = process.env.FRONTEND_BASE_URL
+    ? `${process.env.FRONTEND_BASE_URL}/cars/`
+    : '/cars/';
+  
     const cars = await Car.find({}).populate('dealerId', 'username');
     const dealerMap = {};
 
