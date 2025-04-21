@@ -80,8 +80,11 @@ const functions = [
 ];
 
 const handleFunctionCall = async (name, args) => {
-  const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || 'http://localhost:5173'; 
-  const baseUrl = `${FRONTEND_BASE_URL}/cars/`;
+  const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+  const baseUrl = FRONTEND_BASE_URL.replace(/\/+$/, '') + '/cars/';
+  
+
+
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -145,6 +148,7 @@ const handleFunctionCall = async (name, args) => {
         dealerPhone: car.dealerPhone || 'N/A',
         isCompatible: car.isCompatible,
         markdownLink: `[Click here to view car](${baseUrl}${car._id})`
+
       }))
     };
   }
