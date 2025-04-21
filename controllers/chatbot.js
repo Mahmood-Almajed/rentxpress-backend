@@ -79,12 +79,11 @@ const functions = [
   }
 ];
 
+// ✅ Utility function to build correct car link
+const getFrontendCarLink = (carId) =>
+  (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(/\/+$/, '') + `/cars/${carId}`;
+
 const handleFunctionCall = async (name, args) => {
-  const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
-  const baseUrl = FRONTEND_BASE_URL.replace(/\/+$/, '') + '/cars/';
-  
-
-
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -147,8 +146,7 @@ const handleFunctionCall = async (name, args) => {
         dealerUsername: car.dealerId?.username || 'Unknown',
         dealerPhone: car.dealerPhone || 'N/A',
         isCompatible: car.isCompatible,
-        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
-
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
       }))
     };
   }
@@ -177,7 +175,7 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
         dealerPhone: car.dealerPhone || 'N/A',
-        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
       }
     };
   }
@@ -203,16 +201,12 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
         dealerPhone: car.dealerPhone || 'N/A',
-        markdownLink: `[Click here to view car](${baseUrl}${car._id})`
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
       }))
     };
   }
 
   if (name === "listAllDealers") {
-    const baseUrl = process.env.FRONTEND_BASE_URL
-    ? `${process.env.FRONTEND_BASE_URL}/cars/`
-    : '/cars/';
-  
     const cars = await Car.find({}).populate('dealerId', 'username');
     const dealerMap = {};
 
@@ -221,12 +215,10 @@ const handleFunctionCall = async (name, args) => {
       if (!username) return;
 
       if (!dealerMap[username]) {
-        dealerMap[username] = {
-          cars: []
-        };
+        dealerMap[username] = { cars: [] };
       }
 
-      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year}) - ${car.mileage} km](${baseUrl}${car._id}) — 📞 ${car.dealerPhone || 'N/A'}`;
+      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year}) - ${car.mileage} km](${getFrontendCarLink(car._id)}) — 📞 ${car.dealerPhone || 'N/A'}`;
       dealerMap[username].cars.push(label);
     });
 
