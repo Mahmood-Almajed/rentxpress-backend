@@ -36,6 +36,10 @@ router.post('/:carId', async (req, res) => {
         // Validate rental dates
         const startDate = new Date(req.body.startDate);
         const endDate = new Date(req.body.endDate);
+        const userPhone = req.body.userPhone;
+        if (!userPhone || typeof userPhone !== 'string' || userPhone.trim().length < 8) {
+            return res.status(400).json({ error: "Invalid or missing phone number." });
+        }
         if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
             return res.status(400).json({ error: "Invalid rental dates." });
         }
@@ -51,7 +55,9 @@ router.post('/:carId', async (req, res) => {
             startDate,
             endDate,
             totalPrice,
-            status: 'pending'
+            status: 'pending',
+            userPhone
+            
         });
 
         // Update car availability and rentals list

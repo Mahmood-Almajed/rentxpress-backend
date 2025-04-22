@@ -11,6 +11,8 @@ const rentalSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected', 'completed','cancelled'],
     default: 'pending',
   },
+  userPhone: { type: String  , required: true },
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Rental', rentalSchema);
