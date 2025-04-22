@@ -181,7 +181,7 @@ router.put('/users/:userId/role', isAdmin, async (req, res) => {
 router.put('/rentals/:rentalId/status', isAdmin, async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['approved', 'rejected', 'completed', 'cancelled'].includes(status)) {
+    if (!['pending', 'approved', 'rejected', 'completed', 'cancelled'].includes(status)) {
       return res.status(400).json({ message: 'Invalid rental status' });
     }
 
