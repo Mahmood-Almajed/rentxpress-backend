@@ -9,16 +9,27 @@ const configuration = new Configuration({
 });
 const openai = new OpenAIApi(configuration);
 
-const systemPrompt = `
-You are CarBot, an AI assistant for CarXpress that helps users with car rentals and sales.
+const systemPrompt = (user) => `
+You are CarBot, an AI assistant for CarXpress that helps users and dealers with car rentals and sales.
 You MUST use function calls to fetch car data. Never guess or hallucinate.
+
 Important:
 - Mention total car count
 - Use currency (BHD) or (BD) and model years
 - Highlight ♿ for special needs compatible cars
 - Always return clickable links using markdown [Click here](url)
-- for the Mileage use "km" as the unit and separate thousands with a comma
+- For the Mileage use "km" as the unit and separate thousands with a comma
+
+User Info:
+- Role: ${user?.role || 'guest'}
+- Username: ${user?.username || 'N/A'}
 `;
+
+const getFrontendCarLink = (car, user) => {
+  const base = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  const isDealer = user?.role === 'dealer' && String(car.dealerId) === String(user._id);
+  return `${base}${isDealer ? `/dealer/cars/${car._id}` : `/cars/${car._id}`}`;
+};
 
 const functions = [
   {
@@ -30,18 +41,12 @@ const functions = [
         brand: { type: "string" },
         listingType: { type: "string", enum: ["rent", "sale"] },
         maxPrice: { type: "number" },
-        isCompatible: {
-          type: "boolean",
-          description: "Only return cars compatible with special needs"
-        },
+        isCompatible: { type: "boolean" },
         type: {
           type: "string",
           enum: ['SUV', 'Sedan', 'Truck', 'Off-Road', 'Convertible', 'Hatchback', 'Luxury', 'Electric', 'Sports', 'Van', 'Muscle', 'Coupe', 'Hybrid']
         },
-        maxMileage: {
-          type: "number",
-          description: "Filter cars with mileage less than or equal to this"
-        },
+        maxMileage: { type: "number" },
         limit: { type: "number", default: 5 }
       }
     }
@@ -76,14 +81,18 @@ const functions = [
       type: "object",
       properties: {}
     }
+  },
+  {
+    name: "getMyCars",
+    description: "Fetch all cars listed by the currently logged-in dealer",
+    parameters: {
+      type: "object",
+      properties: {}
+    }
   }
 ];
 
-// ✅ Utility function to build correct car link
-const getFrontendCarLink = (carId) =>
-  (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(/\/+$/, '') + `/cars/${carId}`;
-
-const handleFunctionCall = async (name, args) => {
+const handleFunctionCall = async (name, args, user) => {
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -101,13 +110,10 @@ const handleFunctionCall = async (name, args) => {
       }
     }
 
-    if (args.maxMileage) {
-      filter.mileage = { $lte: args.maxMileage };
-    }
+    if (args.maxMileage) filter.mileage = { $lte: args.maxMileage };
 
-    if (listingType === 'rent') {
-      filter.forSale = false;
-    } else if (listingType === 'sale') {
+    if (listingType === 'rent') filter.forSale = false;
+    else if (listingType === 'sale') {
       filter.forSale = true;
       filter.isSold = false;
     } else {
@@ -117,17 +123,9 @@ const handleFunctionCall = async (name, args) => {
       ];
     }
 
-    if (args.brand) {
-      filter.brand = new RegExp(`^${args.brand}$`, 'i');
-    }
-
-    if (args.type) {
-      filter.type = args.type;
-    }
-
-    if (args.isCompatible === true) {
-      filter.isCompatible = true;
-    }
+    if (args.brand) filter.brand = new RegExp(`^${args.brand}$`, 'i');
+    if (args.type) filter.type = args.type;
+    if (args.isCompatible === true) filter.isCompatible = true;
 
     const allCars = await Car.find(filter).populate('dealerId', 'username');
     const limit = args.limit ?? 5;
@@ -146,7 +144,7 @@ const handleFunctionCall = async (name, args) => {
         dealerUsername: car.dealerId?.username || 'Unknown',
         dealerPhone: car.dealerPhone || 'N/A',
         isCompatible: car.isCompatible,
-        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car, user)})`
       }))
     };
   }
@@ -175,17 +173,14 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
         dealerPhone: car.dealerPhone || 'N/A',
-        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car, user)})`
       }
     };
   }
 
   if (name === "getCarsByDealer") {
     const dealer = await User.findOne({ username: args.dealerUsername });
-
-    if (!dealer) {
-      return { total: 0, cars: [] };
-    }
+    if (!dealer) return { total: 0, cars: [] };
 
     const cars = await Car.find({ dealerId: dealer._id, availability: 'available' });
 
@@ -201,7 +196,31 @@ const handleFunctionCall = async (name, args) => {
         type: car.forSale ? 'sale' : 'rent',
         isCompatible: car.isCompatible,
         dealerPhone: car.dealerPhone || 'N/A',
-        markdownLink: `[Click here to view car](${getFrontendCarLink(car._id)})`
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car, user)})`
+      }))
+    };
+  }
+
+  if (name === "getMyCars") {
+    if (!user || user.role !== 'dealer') {
+      return { error: "Only dealers can view their own car listings." };
+    }
+
+    const cars = await Car.find({ dealerId: user._id });
+
+    return {
+      total: cars.length,
+      cars: cars.map(car => ({
+        id: car._id,
+        year: car.year,
+        brand: car.brand,
+        model: car.model,
+        mileage: car.mileage,
+        price: car.forSale ? car.salePrice : car.pricePerDay,
+        type: car.forSale ? 'sale' : 'rent',
+        isCompatible: car.isCompatible,
+        dealerPhone: car.dealerPhone || 'N/A',
+        markdownLink: `[Click here to view car](${getFrontendCarLink(car, user)})`
       }))
     };
   }
@@ -218,7 +237,7 @@ const handleFunctionCall = async (name, args) => {
         dealerMap[username] = { cars: [] };
       }
 
-      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year}) - ${car.mileage} km](${getFrontendCarLink(car._id)}) — 📞 ${car.dealerPhone || 'N/A'}`;
+      const label = `[${car.brand} ${car.model}${car.isCompatible ? ' ♿' : ''} (${car.year}) - ${car.mileage} km](${getFrontendCarLink(car, user)}) — 📞 ${car.dealerPhone || 'N/A'}`;
       dealerMap[username].cars.push(label);
     });
 
@@ -236,12 +255,13 @@ const handleFunctionCall = async (name, args) => {
   return null;
 };
 
+// 📩 POST /chatbot
 router.post('/', async (req, res) => {
-  const { message, history = [] } = req.body;
+  const { message, history = [], user } = req.body;
 
   try {
     const messages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPrompt(user) },
       ...history,
       { role: 'user', content: message }
     ];
@@ -258,7 +278,7 @@ router.post('/', async (req, res) => {
 
     if (functionCall) {
       const args = JSON.parse(functionCall.arguments);
-      const data = await handleFunctionCall(functionCall.name, args);
+      const data = await handleFunctionCall(functionCall.name, args, user);
 
       const secondMessages = [
         ...messages,
