@@ -15,61 +15,64 @@ router.use(verifyToken);
 // Create rental request (User only)
 router.post('/:carId', async (req, res) => {
     try {
-        const { carId } = req.params;
-
-        // Validate carId
-        if (!isValidObjectId(carId)) {
-            return res.status(400).json({ error: "Invalid car ID" });
-        }
-
-        // Find the car
-        const car = await Car.findById(carId);
-        if (!car) {
-            return res.status(404).json({ error: "Car not found" });
-        }
-
-        // Check car availability
-        if (car.availability !== 'available') {
-            return res.status(400).json({ error: "Car is not available" });
-        }
-
-        // Validate rental dates
-        const startDate = new Date(req.body.startDate);
-        const endDate = new Date(req.body.endDate);
-        const userPhone = req.body.userPhone;
-        if (!userPhone || typeof userPhone !== 'string' || userPhone.trim().length < 8) {
-            return res.status(400).json({ error: "Invalid or missing phone number." });
-        }
-        if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
-            return res.status(400).json({ error: "Invalid rental dates." });
-        }
-
-        // Calculate total price
-        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-        const totalPrice = days * car.pricePerDay;
-
-        // Create the rental
-        const rental = await Rentals.create({
-            userId: req.user._id,
-            carId,
-            startDate,
-            endDate,
-            totalPrice,
-            status: 'pending',
-            userPhone
-            
-        });
-
-        // Update car availability and rentals list
-        car.availability = 'unavailable';
-        car.rentals.push(rental._id);
-        await car.save();
-
-        res.status(201).json(rental);
+      const { carId } = req.params;
+  
+      // Validate carId
+      if (!isValidObjectId(carId)) {
+        return res.status(400).json({ error: "Invalid car ID" });
+      }
+  
+      const car = await Car.findById(carId);
+      if (!car) {
+        return res.status(404).json({ error: "Car not found" });
+      }
+  
+      // Only reject if car is already rented
+      const existingApproved = await Rentals.findOne({
+        carId,
+        status: 'approved',
+      });
+  
+      if (existingApproved) {
+        return res.status(400).json({ error: "Car is already rented." });
+      }
+  
+      // Validate input
+      const startDate = new Date(req.body.startDate);
+      const endDate = new Date(req.body.endDate);
+      const userPhone = req.body.userPhone;
+  
+      if (!userPhone || typeof userPhone !== 'string' || userPhone.trim().length < 8) {
+        return res.status(400).json({ error: "Invalid or missing phone number." });
+      }
+  
+      if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
+        return res.status(400).json({ error: "Invalid rental dates." });
+      }
+  
+      // Calculate price
+      const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+      const totalPrice = days * car.pricePerDay;
+  
+      const rental = await Rentals.create({
+        userId: req.user._id,
+        carId,
+        startDate,
+        endDate,
+        totalPrice,
+        status: 'pending',
+        userPhone,
+      });
+  
+      car.rentals.push(rental._id);
+      await car.save();
+  
+      res.status(201).json(rental);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
-});
+  });
+  
 
 // User cancels their own rental
 router.put('/:rentalId/cancel', async (req, res) => {
@@ -133,32 +136,58 @@ router.get('/dealer-rentals', isDealer, async (req, res) => {
 // Approve, reject, or complete a rental (Dealer only)
 router.put('/:rentalId/status', isDealer, async (req, res) => {
     try {
-        const { status } = req.body;
-        if (!['approved', 'rejected', 'completed'].includes(status)) {
-            return res.status(400).json({ message: 'Invalid rental status.' });
+      const { status } = req.body;
+      const validStatuses = ['approved', 'rejected', 'completed'];
+  
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Invalid rental status.' });
+      }
+  
+      // Get rental and associated car
+      const rental = await Rentals.findById(req.params.rentalId).populate('carId');
+      if (!rental || rental.carId.dealerId.toString() !== req.user._id.toString()) {
+        return res.status(404).json({ message: 'Rental not found or unauthorized.' });
+      }
+  
+      rental.status = status;
+      await rental.save();
+  
+      const car = await Car.findById(rental.carId._id);
+  
+      if (status === 'approved') {
+        car.availability = 'rented';
+  
+        // Reject other pending rentals for the same car
+        await Rentals.updateMany(
+          {
+            carId: car._id,
+            status: 'pending',
+            _id: { $ne: rental._id }
+          },
+          { $set: { status: 'rejected' } }
+        );
+      } else if (status === 'rejected' || status === 'completed') {
+        // If no other approved rentals exist for the car, set availability to 'available'
+        const activeRental = await Rentals.findOne({
+          carId: car._id,
+          status: 'approved',
+          _id: { $ne: rental._id }
+        });
+  
+        if (!activeRental) {
+          car.availability = 'available';
         }
-
-        const rental = await Rentals.findById(req.params.rentalId).populate('carId');
-        if (!rental || rental.carId.dealerId.toString() !== req.user._id.toString()) {
-            return res.status(404).json({ message: 'Rental not found or unauthorized.' });
-        }
-
-        rental.status = status;
-        await rental.save();
-
-        const car = await Car.findById(rental.carId._id);
-        if (status === 'approved') {
-            car.availability = 'rented'; 
-        } else if (status === 'completed' || status === 'rejected') {
-            car.availability = 'available'; 
-        }
-        await car.save();
-
-        res.json({ message: `Rental ${status}.`, rental });
+      }
+  
+      await car.save();
+  
+      res.json({ message: `Rental ${status}.`, rental });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+      res.status(500).json({ message: err.message });
     }
-});
+  });
+  
+  
 
 // dealer can delete a rental (dealer only)
 router.delete('/:rentalId', isDealer, async (req, res) => {
