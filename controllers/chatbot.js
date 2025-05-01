@@ -9,9 +9,46 @@ const configuration = new Configuration({
 });
 const openai = new OpenAIApi(configuration);
 
+const classifyIntent = async (userInput) => {
+  const response = await openai.createChatCompletion({
+    model: "gpt-3.5-turbo-1106",
+    messages: [
+      {
+        role: "system",
+        content: `You are a filter. Decide if this input is irrelevant for a car rental platform. Block things like math (e.g. 1+1), weather, AI trivia, jokes, and fun facts. Allow anything else including platform questions like 'how to become a dealer'. Respond ONLY with {"decision":"allowed"} or {"decision":"blocked"}.`,
+      },
+      {
+        role: "user",
+        content: userInput,
+      },
+    ],
+    functions: [
+      {
+        name: "setIntent",
+        parameters: {
+          type: "object",
+          properties: {
+            decision: {
+              type: "string",
+              enum: ["allowed", "blocked"]
+            }
+          },
+          required: ["decision"]
+        }
+      }
+    ],
+    function_call: { name: "setIntent" }
+  });
+
+  const args = JSON.parse(response.data.choices[0].message.function_call.arguments);
+  return args.decision;
+};
+
+
 const systemPrompt = (user) => `
 You are CarBot, an AI assistant for CarXpress that helps users and dealers with car rentals and sales.
-You MUST use function calls to fetch car data. Never guess or hallucinate.
+You MUST use function calls to fetch car data. If a user asks for a car "for 6 people" or "for a large family", interpret that as a request for a larger car type (like SUV or Van).
+Never guess or hallucinate.
 
 Important:
 - Mention total car count
@@ -92,7 +129,7 @@ const functions = [
   }
 ];
 
-const handleFunctionCall = async (name, args, user) => {
+const handleFunctionCall = async (name, args, user,message) => {
   if (name === "getAvailableCars") {
     const filter = { availability: 'available' };
     const listingType = args.listingType || 'both';
@@ -126,7 +163,17 @@ const handleFunctionCall = async (name, args, user) => {
     if (args.brand) filter.brand = new RegExp(`^${args.brand}$`, 'i');
     if (args.type) filter.type = args.type;
     if (args.isCompatible === true) filter.isCompatible = true;
+    const msg = message.toLowerCase();
+    if (
+      msg.includes("more than 5 people") ||
+      msg.includes("7 people") ||
+      msg.includes("large family") ||
+      msg.includes("family car")
+    ) {
+      filter.type = { $in: ['SUV', 'Van'] };
+    }
 
+    
     const allCars = await Car.find(filter).populate('dealerId', 'username');
     const limit = args.limit ?? 5;
     const results = limit > 0 ? allCars.slice(0, limit) : allCars;
@@ -255,9 +302,18 @@ const handleFunctionCall = async (name, args, user) => {
   return null;
 };
 
-// 📩 POST /chatbot
+//  POST /chatbot
 router.post('/', async (req, res) => {
   const { message, history = [], user } = req.body;
+
+  const decision = await classifyIntent(message);
+if (decision === 'blocked') {
+  return res.json({
+    reply: ` I'm here to help with car rentals, purchases, dealer info, and platform support. Please ask something related to those.`,
+    history
+  });
+}
+
 
   try {
     const messages = [
@@ -278,7 +334,7 @@ router.post('/', async (req, res) => {
 
     if (functionCall) {
       const args = JSON.parse(functionCall.arguments);
-      const data = await handleFunctionCall(functionCall.name, args, user);
+      const data = await handleFunctionCall(functionCall.name, args, user,message);
 
       const secondMessages = [
         ...messages,
