@@ -60,6 +60,10 @@ Important:
 User Info:
 - Role: ${user?.role || 'guest'}
 - Username: ${user?.username || 'N/A'}
+
+If the user asks about selling a car, listing a car, or becoming a seller, explain that they must become an approved dealer first by submitting a dealer request through the "Become a Dealer" section on the platform. Do not allow guests or normal users to list cars for sale.
+
+Example reply: "To sell a car on CarXpress, you first need to become an approved dealer. Please visit the 'Become a Dealer' page and submit your request. Once approved, you’ll be able to list your vehicles for sale."
 `;
 
 const getFrontendCarLink = (car, user) => {
@@ -164,14 +168,23 @@ const handleFunctionCall = async (name, args, user,message) => {
     if (args.type) filter.type = args.type;
     if (args.isCompatible === true) filter.isCompatible = true;
     const msg = message.toLowerCase();
-    if (
-      msg.includes("more than 5 people") ||
-      msg.includes("7 people") ||
-      msg.includes("large family") ||
-      msg.includes("family car")
-    ) {
-      filter.type = { $in: ['SUV', 'Van'] };
-    }
+
+// Precise match only for seat numbers
+const suvMatch = /(6|seven|7)[ -]?(people|persons|seater|seat)/.test(msg);
+const vanMatch = /(8|9|10|eight|nine|ten)[ -]?(people|persons|seater|seat)/.test(msg);
+
+// ✅ Apply only if clearly matched
+if (vanMatch) {
+  filter.type = 'Van';
+} else if (suvMatch) {
+  filter.type = 'SUV';
+}
+
+else if (!args.type && msg.includes("family trip") && !vanMatch && !suvMatch) {
+  filter.type = 'SUV';
+}
+
+    
 
     
     const allCars = await Car.find(filter).populate('dealerId', 'username');
@@ -306,10 +319,34 @@ const handleFunctionCall = async (name, args, user,message) => {
 router.post('/', async (req, res) => {
   const { message, history = [], user } = req.body;
 
+
+
   const decision = await classifyIntent(message);
 if (decision === 'blocked') {
   return res.json({
     reply: ` I'm here to help with car rentals, purchases, dealer info, and platform support. Please ask something related to those.`,
+    history
+  });
+}
+const normalized = message.toLowerCase().trim();
+
+if (normalized.includes("how to become a dealer") || normalized.includes("become a dealer")) {
+  return res.json({
+    reply: `To become a dealer on CarXpress:\n\n1. Go to the "Become a Dealer" page from the main navigation menu.\n2. Fill in the required personal and contact information.\n3. Submit your application.\n4. Once approved, you will be able to log in as a dealer and list cars for sale or rent.\n\nLet me know if you need help finding the form!`,
+    history
+  });
+}
+
+if (normalized.includes("list my cars") || normalized.includes("how to list a car") || normalized.includes("add my car")) {
+  return res.json({
+    reply: `To list your car:\n\n1. Log in to your dealer account.\n2. Navigate to "My Cars" from the menu.\n3. Click "Add New Car".\n4. Fill in all car details and upload photos.\n5. Submit the form to make your listing live.`,
+    history
+  });
+}
+
+if (normalized.includes("view my rentals") || normalized.includes("my bookings") || normalized.includes("rental history")) {
+  return res.json({
+    reply: `To view your rental history:\n\n1. Log in to your user account.\n2. Go to the "My Rentals" section from the main menu.\n3. Here, you’ll see all your rental requests, their status, and details.`,
     history
   });
 }
