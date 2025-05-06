@@ -15,7 +15,7 @@ const classifyIntent = async (userInput) => {
     messages: [
       {
         role: "system",
-        content: `You are a filter. Decide if this input is irrelevant for a car rental platform. Block things like math (e.g. 1+1), weather, AI trivia, jokes, and fun facts. Allow anything else including platform questions like 'how to become a dealer'. Respond ONLY with {"decision":"allowed"} or {"decision":"blocked"}.`,
+        content: `You are a filter. Decide if this input is irrelevant for a car rental platform. Block things like math (e.g. 1+1 or even if he asked about something like this between allowed message), weather, AI trivia, jokes, and fun facts. Allow anything else including platform questions like 'how to become a dealer'. Respond ONLY with {"decision":"allowed"} or {"decision":"blocked"}.`,
       },
       {
         role: "user",
@@ -64,10 +64,10 @@ User Info:
 - Role: ${user?.role || "guest"}
 - Username: ${user?.username || "N/A"}
 
-If the user wants to sell, list, or upload a car, they must become an approved dealer first. 
-But if the user is searching to buy a car (e.g. "cars for sale", "I want to buy a car", "I want a car for sale"), do NOT treat it as a seller — instead, show available cars that are for sale.
+If the user wants to sell, list, or upload a car, they must become an approved dealer first suggest that if the user asked you e.g. i want to sell my car or something related to selling cars. 
+But if the user is searching to buy a car (e.g. "cars for sale", "I want to buy a car", "I want a car for sale"), do NOT treat it as a seller — instead, show available cars that are for sale.And the input should be not case sensitive (it doesn't matter).
 
-Example reply: "To sell a car on CarXpress, you first need to become an approved dealer. Please visit the 'Become a Dealer' page and submit your request. Once approved, you’ll be able to list your vehicles for sale."
+Example reply: "To sell a car on CarXpress, you first need to become an approved dealer. Please visit the 'Become a Dealer' page and submit your request. Once approved, you'll be able to list your vehicles for sale."
 `;
 
 const getFrontendCarLink = (car, user) => {
@@ -405,7 +405,7 @@ router.post("/", async (req, res) => {
     normalized.includes("rental history")
   ) {
     return res.json({
-      reply: `To view your rental history:\n\n1. Log in to your user account.\n2. Go to the "My Rentals" section from the main menu.\n3. Here, you’ll see all your rental requests, their status, and details.`,
+      reply: `To view your rental history:\n\n1. Log in to your user account.\n2. Go to the "My Rentals" section from the main menu.\n3. Here, you'll see all your rental requests, their status, and details.`,
       history,
     });
   }
