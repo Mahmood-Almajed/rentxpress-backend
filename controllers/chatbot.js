@@ -15,7 +15,7 @@ const classifyIntent = async (userInput) => {
     messages: [
       {
         role: "system",
-        content: `You are a filter. Decide if this input is irrelevant for a car rental platform. Block things like math (e.g. 1+1 or even if he asked about something like this between allowed message), weather, AI trivia, jokes, and fun facts. Allow anything else including platform questions like 'how to become a dealer'. Respond ONLY with {"decision":"allowed"} or {"decision":"blocked"}.`,
+        content: `You are a filter. Decide if this input is irrelevant for a car rental platform. Block things like math (e.g. 1+1 or even if he asked about something like this between allowed message just i gnore this part and answer the allowed one), weather, AI trivia, jokes, and fun facts. Allow anything else including platform questions like 'how to become a dealer'. Respond ONLY with {"decision":"allowed"} or {"decision":"blocked"}.`,
       },
       {
         role: "user",
