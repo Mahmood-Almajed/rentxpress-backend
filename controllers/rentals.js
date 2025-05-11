@@ -13,69 +13,79 @@ const Car = require('../models/car.js');
 router.use(verifyToken);
 
 // Create rental request (User only)
+// Create rental request (User only)
 router.post('/:carId', async (req, res) => {
-    try {
-      const { carId } = req.params;
-  
-      // Validate carId
-      if (!isValidObjectId(carId)) {
-        return res.status(400).json({ error: "Invalid car ID" });
-      }
-  
-      const car = await Car.findById(carId);
-      if (!car) {
-        return res.status(404).json({ error: "Car not found" });
-      }
-  
-      // Only reject if car is already rented
-      const existingApproved = await Rentals.findOne({
-        carId,
-        status: 'approved',
-      });
-  
-      if (existingApproved) {
-        return res.status(400).json({ error: "Car is already rented." });
-      }
-  
-      // Validate input
-      const startDate = new Date(req.body.startDate);
-      const endDate = new Date(req.body.endDate);
-      const userPhone = req.body.userPhone;
-  
-      if (!userPhone || typeof userPhone !== 'string' || userPhone.trim().length < 8) {
-        return res.status(400).json({ error: "Invalid or missing phone number." });
-      }
-  
-      if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
-        return res.status(400).json({ error: "Invalid rental dates." });
-      }
-  
-      // Calculate price
-      //milliseconds in a day
-      const msInDay = 1000 * 60 * 60 * 24;
-      const diff = Math.floor((endDate - startDate) / msInDay);
-      const days = diff + 1;
+  try {
+    const { carId } = req.params;
 
-      const totalPrice = days * car.pricePerDay;
-  
-      const rental = await Rentals.create({
-        userId: req.user._id,
-        carId,
-        startDate,
-        endDate,
-        totalPrice,
-        status: 'pending',
-        userPhone,
-      });
-  
-      car.rentals.push(rental._id);
-      await car.save();
-  
-      res.status(201).json(rental);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    // Validate carId
+    if (!isValidObjectId(carId)) {
+      return res.status(400).json({ error: "Invalid car ID" });
     }
-  });
+
+    const car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    // 🛑 Reject if user already has a pending rental request for the same car
+    const existingPending = await Rentals.findOne({
+      userId: req.user._id,
+      carId,
+      status: 'pending'
+    });
+
+    if (existingPending) {
+      return res.status(400).json({ error: "You already have a pending rental request for this car." });
+    }
+
+    // Also reject if the car is already rented
+    const existingApproved = await Rentals.findOne({
+      carId,
+      status: 'approved',
+    });
+
+    if (existingApproved) {
+      return res.status(400).json({ error: "Car is already rented." });
+    }
+
+    // Validate input
+    const startDate = new Date(req.body.startDate);
+    const endDate = new Date(req.body.endDate);
+    const userPhone = req.body.userPhone;
+
+    if (!userPhone || typeof userPhone !== 'string' || userPhone.trim().length < 8) {
+      return res.status(400).json({ error: "Invalid or missing phone number." });
+    }
+
+    if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
+      return res.status(400).json({ error: "Invalid rental dates." });
+    }
+
+    const msInDay = 1000 * 60 * 60 * 24;
+    const diff = Math.floor((endDate - startDate) / msInDay);
+    const days = diff + 1;
+    const totalPrice = days * car.pricePerDay;
+
+    const rental = await Rentals.create({
+      userId: req.user._id,
+      carId,
+      startDate,
+      endDate,
+      totalPrice,
+      status: 'pending',
+      userPhone,
+    });
+
+    car.rentals.push(rental._id);
+    await car.save();
+
+    res.status(201).json(rental);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
   
 
 // User cancels their own rental
