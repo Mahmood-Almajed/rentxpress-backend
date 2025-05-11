@@ -46,12 +46,16 @@ router.post('/:carId', async (req, res) => {
         return res.status(400).json({ error: "Invalid or missing phone number." });
       }
   
-      if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
+      if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
         return res.status(400).json({ error: "Invalid rental dates." });
       }
   
       // Calculate price
-      const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+      //milliseconds in a day
+      const msInDay = 1000 * 60 * 60 * 24;
+      const diff = Math.floor((endDate - startDate) / msInDay);
+      const days = diff + 1;
+
       const totalPrice = days * car.pricePerDay;
   
       const rental = await Rentals.create({
