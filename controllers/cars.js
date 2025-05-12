@@ -185,12 +185,10 @@ router.delete("/:carId", verifyToken, async (req, res) => {
       req.user.role !== "admin" &&
       car.dealerId.toString() !== req.user._id.toString()
     ) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Unauthorized: You can only delete your own cars unless you're an admin.",
-        });
+      return res.status(403).json({
+        error:
+          "Unauthorized: You can only delete your own cars unless you're an admin.",
+      });
     }
 
     // Delete associated images from Cloudinary
@@ -240,12 +238,10 @@ router.delete("/:carId/reviews/:reviewId", verifyToken, async (req, res) => {
       (req.user.role !== "admin" &&
         review.userId.toString() !== req.user._id.toString())
     ) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Unauthorized: You can only delete your own reviews unless you're an admin.",
-        });
+      return res.status(403).json({
+        error:
+          "Unauthorized: You can only delete your own reviews unless you're an admin.",
+      });
     }
 
     car.reviews.pull(review._id);
