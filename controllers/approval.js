@@ -14,6 +14,14 @@ router.post('/request-dealer', async (req, res) => {
   try {
     const { phone, description } = req.body;
 
+  const bahrainPhoneRegex = /^(\+973)?(3(20|21|22|23|80|81|82|83|84|87|88|89|9)\d{5}|33\d{6}|34[0-6]\d{5}|35(0|1|3|4|5)\d{5}|36\d{6}|37\d{6}|31\d{6}|66(3|6|9)\d{5}|6500\d{4}|1\d{7})$/;
+  
+    
+    if (!phone || !bahrainPhoneRegex.test(phone)) {
+      return res.status(400).json({ error: "Invalid Bahrain phone number." });
+    }
+
+
     const user = await User.findById(req.user._id);
     if (user.role === 'dealer') {
       return res.status(400).json({ error: 'You are already a dealer.' });
