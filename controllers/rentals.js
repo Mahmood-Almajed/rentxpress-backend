@@ -28,7 +28,7 @@ router.post("/:carId", async (req, res) => {
       return res.status(404).json({ error: "Car not found" });
     }
 
-    // 🛑 Reject if user already has a pending rental request for the same car
+    //  Reject if user already has a pending rental request for the same car
     const existingPending = await Rentals.findOne({
       userId: req.user._id,
       carId,
